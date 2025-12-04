@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/terminal_bg"
+    android:padding="8dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="> DUCKY_IDE_V1.0"
+        android:textColor="@color/terminal_green"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:paddingBottom="8dp"/>
+
+    <EditText
+        android:id="@+id/editor"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_editor"
+        android:gravity="top|start"
+        android:padding="8dp"
+        android:hint="@string/hint_editor"
+        android:textColor="@color/terminal_green"
+        android:textColorHint="#5500FF00"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:inputType="textMultiLine|textNoSuggestions"
+        android:scrollbars="vertical" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <Button
+            android:id="@+id/btn_load"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/action_load"
+            android:backgroundTint="@color/dark_grey"
+            android:textColor="@color/terminal_green"
+             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:fontFamily="monospace"/>
+
+        <Space
+            android:layout_width="8dp"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/action_save"
+            android:backgroundTint="@color/dark_grey"
+            android:textColor="@color/terminal_green"
+             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:fontFamily="monospace"/>
+
+        <Space
+            android:layout_width="8dp"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/btn_run"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/action_run"
+            android:backgroundTint="@color/terminal_green"
+            android:textColor="@color/black"
+            android:textStyle="bold"
+            android:fontFamily="monospace"/>
+
+    </LinearLayout>
+    
+    <TextView
+        android:id="@+id/status_log"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="3"
+        android:textColor="#AAAAAA"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:text="> System ready."
+        android:paddingTop="4dp"/>
+
+</LinearLayout>

@@ -1,0 +1,14 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.DuckyIDE" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">@color/terminal_green</item>
+        <item name="colorPrimaryVariant">@color/black</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorSecondary">@color/terminal_green</item>
+        <item name="colorSecondaryVariant">@color/terminal_green</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:statusBarColor">@color/black</item>
+        <item name="android:windowBackground">@color/terminal_bg</item>
+        <item name="android:textColor">@color/terminal_green</item>
+        <item name="android:fontFamily">monospace</item>
+    </style>
+</resources>

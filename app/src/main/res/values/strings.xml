@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">DuckyIDE</string>
+    <string name="action_run">INJECT</string>
+    <string name="action_save">SAVE</string>
+    <string name="action_load">LOAD</string>
+    <string name="hint_editor">REM Type your Ducky Script here...
+STRING Hello World</string>
+</resources>

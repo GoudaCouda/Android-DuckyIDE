@@ -1,3 +1,5 @@
+Written by Gemini 
+
 # DuckyIDE - Android HID Injector
 
 A native Android application that allows you to write, save, and execute Ducky Scripts directly from your device.

@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/terminal_bg"
+    android:fillViewport="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="> USB_ARSENAL_V1.0"
+        android:textColor="@color/terminal_green"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:paddingBottom="16dp"/>
+
+    <!-- USB Mode Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="[ USB INTERFACE CONFIG ]"
+        android:textColor="@color/terminal_green"
+        android:fontFamily="monospace"
+        android:textStyle="bold"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_editor"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            
+            <CheckBox
+                android:id="@+id/chk_func_hid"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="HID (Keyboard)"
+                android:textColor="@color/terminal_green"
+                android:buttonTint="@color/terminal_green"
+                android:fontFamily="monospace"/>
+
+            <CheckBox
+                android:id="@+id/chk_func_storage"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Mass Storage"
+                android:textColor="@color/terminal_green"
+                android:buttonTint="@color/terminal_green"
+                android:fontFamily="monospace"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/chk_func_rndis"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="RNDIS (Net)"
+                android:textColor="@color/terminal_green"
+                android:buttonTint="@color/terminal_green"
+                android:fontFamily="monospace"/>
+
+            <CheckBox
+                android:id="@+id/chk_func_mtp"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="MTP (File)"
+                android:textColor="@color/terminal_green"
+                android:buttonTint="@color/terminal_green"
+                android:fontFamily="monospace"/>
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/dark_grey"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="4dp"/>
+
+        <Switch
+            android:id="@+id/switch_adb"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enable ADB (Debugging)"
+            android:textColor="@color/terminal_green"
+            android:thumbTint="@color/terminal_green"
+            android:trackTint="#5500FF00"
+            android:fontFamily="monospace"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[ DEVICE IDENTITY ]"
+            android:textColor="@color/terminal_green"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp"/>
+            
+        <Spinner
+            android:id="@+id/spinner_vid_pid_preset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/terminal_green"
+            android:layout_marginBottom="8dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/et_vid"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="VID (0x1d6b)"
+                android:text="0x1d6b"
+                android:textColor="@color/terminal_green"
+                android:textColorHint="#5500FF00"
+                android:textSize="14sp"
+                android:fontFamily="monospace"
+                android:inputType="textNoSuggestions"/>
+
+            <Space android:layout_width="16dp" android:layout_height="wrap_content"/>
+
+            <EditText
+                android:id="@+id/et_pid"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="PID (0x0104)"
+                android:text="0x0104"
+                android:textColor="@color/terminal_green"
+                android:textColorHint="#5500FF00"
+                android:textSize="14sp"
+                android:fontFamily="monospace"
+                android:inputType="textNoSuggestions"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_set_usb"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="APPLY CONFIG"
+        android:backgroundTint="@color/dark_grey"
+        android:textColor="@color/terminal_green"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:fontFamily="monospace"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/dark_grey"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Mass Storage Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="[ MASS STORAGE MOUNTER ]"
+        android:textColor="@color/terminal_green"
+        android:fontFamily="monospace"
+        android:textStyle="bold"/>
+    
+    <TextView
+        android:id="@+id/tv_images_path"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Path: /sdcard/DuckyImages"
+        android:textColor="#888888"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:paddingTop="4dp"/>
+        
+    <Button
+        android:id="@+id/btn_open_folder"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:text="OPEN FOLDER"
+        android:textSize="10sp"
+        android:backgroundTint="@android:color/transparent"
+        android:textColor="@color/terminal_green"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:fontFamily="monospace"
+        android:layout_gravity="end"
+        android:layout_marginTop="-24dp"/>
+
+    <TextView
+        android:id="@+id/tv_mounted_file"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="MOUNTED: NONE"
+        android:textColor="#AAAAAA"
+        android:fontFamily="monospace"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"/>
+
+    <Spinner
+        android:id="@+id/spinner_images"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:backgroundTint="@color/terminal_green"
+        android:layout_marginBottom="8dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        
+        <CheckBox
+            android:id="@+id/chk_ro"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="READ-ONLY"
+            android:textColor="@color/terminal_green"
+            android:buttonTint="@color/terminal_green"
+            android:fontFamily="monospace"/>
+            
+        <Space android:layout_width="16dp" android:layout_height="wrap_content"/>
+
+        <CheckBox
+            android:id="@+id/chk_cdrom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CD-ROM"
+            android:textColor="@color/terminal_green"
+            android:buttonTint="@color/terminal_green"
+            android:fontFamily="monospace"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <Button
+            android:id="@+id/btn_mount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="MOUNT"
+            android:backgroundTint="@color/terminal_green"
+            android:textColor="@color/black"
+            android:textStyle="bold"
+            android:fontFamily="monospace"/>
+
+        <Space android:layout_width="8dp" android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/btn_unmount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="UNMOUNT"
+            android:backgroundTint="@color/dark_grey"
+            android:textColor="@color/terminal_green"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:fontFamily="monospace"/>
+
+    </LinearLayout>
+    
+    <TextView
+        android:id="@+id/status_log_arsenal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="15"
+        android:scrollbars="vertical"
+        android:textColor="#AAAAAA"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:text="> Waiting for input..."
+        android:paddingTop="16dp"/>
+
+</LinearLayout>
+</ScrollView>

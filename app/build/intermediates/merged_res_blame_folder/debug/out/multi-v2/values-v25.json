@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.example.duckyide.app-mergeDebugResources-29:/values-v25/values-v25.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\austi\\.gradle\\caches\\transforms-4\\255c6f9d7c502f337b7e1f6dd500bdcd\\transformed\\appcompat-1.6.1\\res\\values-v25\\values-v25.xml",
+                    "from": {
+                        "startLines": "2,3,4,6",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,126,209,308",
+                        "endLines": "2,3,5,7",
+                        "endColumns": "70,82,12,12",
+                        "endOffsets": "121,204,303,414"
+                    }
+                }
+            ]
+        }
+    ]
+}

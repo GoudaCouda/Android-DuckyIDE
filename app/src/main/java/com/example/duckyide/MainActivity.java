@@ -1,5 +1,6 @@
 package com.example.duckyide;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
 import android.widget.Button;
@@ -27,12 +28,16 @@ public class MainActivity extends AppCompatActivity {
         Button btnRun = findViewById(R.id.btn_run);
         Button btnSave = findViewById(R.id.btn_save);
         Button btnLoad = findViewById(R.id.btn_load);
+        Button btnArsenal = findViewById(R.id.btn_usb_arsenal);
 
         checkRoot();
 
         btnRun.setOnClickListener(v -> runScript());
         btnSave.setOnClickListener(v -> saveScript());
         btnLoad.setOnClickListener(v -> loadScript());
+        btnArsenal.setOnClickListener(v -> {
+            startActivity(new Intent(this, UsbArsenalActivity.class));
+        });
     }
 
     private void checkRoot() {
@@ -53,12 +58,22 @@ public class MainActivity extends AppCompatActivity {
         if (code.isEmpty()) return;
 
         statusLog.setText("> Compiling...");
-        String shellScript = DuckyParser.parseToShell(code);
+        
+        DuckyParser.ParseResult result = DuckyParser.parseToShell(code);
+        
+        if (!result.errors.isEmpty()) {
+            StringBuilder sb = new StringBuilder("> Compilation Errors:\n");
+            for (String err : result.errors) {
+                sb.append("  - ").append(err).append("\n");
+            }
+            statusLog.setText(sb.toString());
+            return;
+        }
         
         statusLog.append("\n> Injecting...");
         new Thread(() -> {
             try {
-                RootShell.executeScript(shellScript);
+                RootShell.executeScript(result.shellScript);
                 runOnUiThread(() -> statusLog.append("\n> Injection Complete."));
             } catch (IOException e) {
                 runOnUiThread(() -> statusLog.append("\n> Error: " + e.getMessage()));

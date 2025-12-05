@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="dark_grey">#FF202020</color>
+    <color name="terminal_bg">#FF0A0A0A</color>
+    <color name="terminal_green">#FF00FF00</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="action_load">LOAD</string>
+    <string name="action_run">INJECT</string>
+    <string name="action_save">SAVE</string>
+    <string name="app_name">DuckyIDE</string>
+    <string name="hint_editor">REM Type your Ducky Script here...
+STRING Hello World</string>
+    <style name="Theme.DuckyIDE" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">@color/terminal_green</item>
+        <item name="colorPrimaryVariant">@color/black</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorSecondary">@color/terminal_green</item>
+        <item name="colorSecondaryVariant">@color/terminal_green</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:statusBarColor">@color/black</item>
+        <item name="android:windowBackground">@color/terminal_bg</item>
+        <item name="android:textColor">@color/terminal_green</item>
+        <item name="android:fontFamily">monospace</item>
+    </style>
+</resources>

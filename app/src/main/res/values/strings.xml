@@ -3,6 +3,10 @@
     <string name="action_run">INJECT</string>
     <string name="action_save">SAVE</string>
     <string name="action_load">LOAD</string>
-    <string name="hint_editor">REM Type your Ducky Script here...
-STRING Hello World</string>
+    <string name="hint_editor">REM Ducky Script Editor
+DEFINE MY_KEY 02 04
+DELAY 500
+STRING Hello World
+ENTER
+MY_KEY</string>
 </resources>

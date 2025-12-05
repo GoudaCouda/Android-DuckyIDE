@@ -1,0 +1,31 @@
+R_DEF: Internal format may change without notice
+local
+color black
+color dark_grey
+color terminal_bg
+color terminal_green
+color white
+drawable bg_editor
+id btn_load
+id btn_mount
+id btn_run
+id btn_save
+id btn_set_usb
+id btn_unmount
+id btn_usb_arsenal
+id chk_cdrom
+id chk_ro
+id editor
+id spinner_images
+id spinner_usb_mode
+id status_log
+id status_log_arsenal
+id tv_mounted_file
+layout activity_main
+layout activity_usb_arsenal
+string action_load
+string action_run
+string action_save
+string app_name
+string hint_editor
+style Theme.DuckyIDE

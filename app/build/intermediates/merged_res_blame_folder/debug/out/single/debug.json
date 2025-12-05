@@ -1,0 +1,14 @@
+[
+    {
+        "merged": "com.example.duckyide.app-merged_res-31:/layout_activity_main.xml.flat",
+        "source": "com.example.duckyide.app-main-33:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.example.duckyide.app-merged_res-31:/drawable_bg_editor.xml.flat",
+        "source": "com.example.duckyide.app-main-33:/drawable/bg_editor.xml"
+    },
+    {
+        "merged": "com.example.duckyide.app-merged_res-31:/layout_activity_usb_arsenal.xml.flat",
+        "source": "com.example.duckyide.app-main-33:/layout/activity_usb_arsenal.xml"
+    }
+]

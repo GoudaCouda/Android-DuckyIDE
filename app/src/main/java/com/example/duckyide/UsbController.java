@@ -128,9 +128,7 @@ public class UsbController {
             // 7. START ADBD (If enabled)
             if (enableAdb) {
                 logExec(log, "start adbd");
-                try { Thread.sleep(1000); } catch (Exception e) {}
                 logExec(log, "setprop sys.usb.ffs.ready 1");
-                try { Thread.sleep(1000); } catch (Exception e) {}
             }
 
             // 6. ENABLE UDC
@@ -183,7 +181,7 @@ public class UsbController {
         try { Thread.sleep(500); } catch (Exception e) {}
     }
 
-    private static void enableUDC(StringBuilder log) throws IOException {
+    private static void enableUDC(StringBuilder log) throws IOException, InterruptedException {
         String udc = RootShell.exec("ls /sys/class/udc").stdout.trim();
         if (udc.isEmpty()) {
             log.append("WARN: No UDC found.\n");
@@ -191,6 +189,7 @@ public class UsbController {
         }
         log.append("Enabling UDC: ").append(udc).append("\n");
         logExec(log, "echo " + udc + " > " + GADGET_PATH + "/UDC");
+        Thread.sleep(1000);
     }
 
     private static void logExec(StringBuilder log, String cmd) throws IOException {

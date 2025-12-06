@@ -1,98 +1,68 @@
-# DuckyIDE Developer Guide
+# DuckyIDE Developer Guide & Technical Architecture
 
-This document provides a technical overview of the **DuckyIDE** project, a native Android application designed to turn a rooted device into a powerful USB HID injection tool (BadUSB) and USB Gadget manager (USB Arsenal).
+This document outlines the critical technical decisions, architectural patterns, and "lessons learned" during the development of DuckyIDE. It serves as a reference for future contributors to understand *why* the code is written the way it is.
 
-## 1. Project Architecture
+## 1. USB Gadget Orchestration ("The Total Control Strategy")
 
-The application is built using standard Android Java (native) to ensure minimal overhead and maximum performance on low-end devices. It relies heavily on **Root Access (`su`)** to interact with the Linux Kernel's USB Gadget ConfigFS.
+Android's default `init` system aggressively manages the `sys.usb.config` property. Simply appending "hid" to this property often fails because the OS doesn't know how to construct a custom composite gadget.
 
-### Core Components
+### The Problem
+*   **Conflict:** Setting `sys.usb.config` triggers Android's USB HAL, which wipes manual changes to ConfigFS.
+*   **Ordering:** Windows is picky about Interface Descriptor ordering. If ADB isn't first, or if interfaces aren't numbered sequentially, the driver installation fails.
+*   **Naming:** Strict kernels (Samsung/Pixel) require function symlinks in `configs/b.1/` to be named sequentially (e.g., `f1`, `f2`, `f3`) rather than their source names (e.g., `mass_storage.0`).
 
-*   **`MainActivity.java`**:
-    *   **Role:** The primary entry point.
-    *   **Functions:**
-        *   Provides the Code Editor for Ducky Script.
-        *   Handles File I/O (Load/Save scripts).
-        *   Initiates the **Injection** workflow.
-        *   Checks for Root access on startup.
+### The Solution: `UsbController.java`
+We implemented a **"Total Control"** workflow that mimics Kali Nethunter's boot scripts:
 
-*   **`UsbArsenalActivity.java`**:
-    *   **Role:** The UI for managing USB Gadget functions (Nethunter-style USB Arsenal).
-    *   **Functions:**
-        *   Allows enabling/disabling specific USB functions: `HID` (Keyboard/Mouse), `Mass Storage`, `RNDIS` (Network), `MTP`, and `ADB`.
-        *   Manages **Device Identity** (Vendor ID / Product ID) spoofing.
-        *   Handles **Disk Image Mounting** (`.img`/`.iso` files) for Mass Storage.
-        *   Persists user settings (VID/PID) via `SharedPreferences`.
+1.  **Disable UDC:** `echo "" > UDC` stops the gadget physically.
+2.  **Kill the Daemon:** `stop adbd` ensures the debugger doesn't fight us.
+3.  **Reset State:** `setprop sys.usb.config none` forces the OS to release its grip on ConfigFS.
+4.  **Manual Composition:** We manually symlink functions from `/functions/` to `/configs/b.1/`.
+    *   **Ordering:** ADB (`f1`) -> RNDIS (`f2`) -> MTP (`f3`) -> Mass Storage (`f4`) -> HID (`f5`).
+    *   **Dynamic Naming:** We assume the kernel needs aliases. We check for `ffs.adb` but link it as `f1`.
+5.  **Re-Enable:** Write the UDC name back to `UDC` and manually restart `adbd`.
 
-*   **`DuckyParser.java`**:
-    *   **Role:** The compiler/translator.
-    *   **Functions:**
-        *   Parses Ducky Script syntax (e.g., `STRING`, `GUI r`, `DELAY`).
-        *   Translates commands into raw shell scripts that write byte reports to the HID device file (`/dev/hidg0`).
-    *   **Critical Implementation Detail:**
-        *   Uses **7-byte HID Reports** (1 Modifier + 1 Reserved + 1 Key + 4 Padding).
-        *   Uses `echo -ne` for writing binary data.
-        *   Optimizes execution by keeping the file descriptor (`fd 3`) open for the duration of the script to prevent driver resets between keystrokes.
+## 2. HID Injection Strategy
 
-*   **`UsbController.java`**:
-    *   **Role:** The backend logic for USB Gadget manipulation.
-    *   **Functions:**
-        *   Interacts with Android's `ConfigFS` subsystem at `/config/usb_gadget/g1`.
-        *   **Setup Logic:**
-            1.  **Reset:** Disables UDC and sets `sys.usb.config` to `none` or `adb`.
-            2.  **Cleanup:** Manually unlinks old functions from `configs/b.1`.
-            3.  **Link:** Manually symlinks desired functions (`mass_storage`, `hid.0`, etc.) into `configs/b.1`.
-            4.  **Identity:** Writes custom VID/PID to `idVendor`/`idProduct`.
-            5.  **Bounce:** Toggles the UDC (USB Device Controller) to force the host PC to re-enumerate the device.
-    *   **Mounting:** Writes image paths to the `lun.0/file` node of the Mass Storage gadget.
+Sending keystrokes to `/dev/hidg0` sounds simple, but doing it reliably and fast on Android is difficult.
 
-*   **`RootShell.java`**:
-    *   **Role:** A helper utility for executing shell commands.
-    *   **Functions:**
-        *   `exec(String cmd)`: Runs a command and returns output (blocking).
-        *   `runScriptFile(String path)`: Executes a standalone shell script file using `su -c "sh <path>"`.
+### Evolution of Methods
+1.  **`echo -ne "\x..."`**: 
+    *   *Failure:* Android shells (mksh/toybox) behave inconsistently with escape sequences. `\x00` often gets eaten or misinterpreted, leading to "stuck keys" (modifiers not releasing).
+2.  **Binary Tool (`hid-keyboard`)**: 
+    *   *Failure:* Spawning a new process for every single keystroke (`Runtime.exec`) is incredibly slow (10-20ms overhead per key). A long script takes minutes to type.
+3.  **Current Solution: Base64 Stream Pipelining** (Implemented in `DuckyParser.java`)
 
-## 2. Key Workflows
+### The "Base64 + dd" Pipeline
+To achieve atomic, binary-safe, and fast injection:
 
-### The Injection Process
-1.  **User** types script in `MainActivity` and clicks **INJECT**.
-2.  **`DuckyParser`** validates the syntax and generates a shell script string.
-    *   *Example Output:*
-        ```bash
-        #!/bin/sh
-        HID_DEV=/dev/hidg0
-        exec 3> $HID_DEV
-        printf "\x00\x00\x04\x00\x00\x00\x00" >&3  # Press 'a'
-        sleep 0.02
-        printf "\x00\x00\x00\x00\x00\x00\x00" >&3  # Release
-        exec 3>&-
-        ```
-3.  **`MainActivity`** writes this string to a temporary file: `cache/payload.sh`.
-4.  **`RootShell`** executes this file as root.
-5.  **Kernel** receives the writes to `/dev/hidg0` and sends keystrokes to the victim PC.
+1.  **Java Buffering:** The `DuckyParser` converts the entire Ducky Script into a raw `byte[]` array in memory (Java). Each keystroke is an 8-byte packet (`Mod, Res, Key, 0, 0, 0, 0, 0`).
+2.  **Encoding:** We Base64 encode this binary blob.
+3.  **Atomic Delivery:** We generate a single shell command:
+    ```bash
+    echo "BASE64_STRING..." | base64 -d | dd of=/dev/hidg0 bs=8 2>/dev/null
+    ```
+    *   `base64 -d`: Decodes the data back to raw binary on the device side.
+    *   `dd of=/dev/hidg0 bs=8`: Writes to the driver in **8-byte blocks**. This is crucial. If you write 7 bytes or 9 bytes, the HID driver rejects the packet. `dd` guarantees block alignment.
 
-### The USB Configuration Process
-1.  **User** selects functions (e.g., HID + Storage) in `UsbArsenalActivity`.
-2.  **`UsbController.setUsbFunctions`** is called.
-3.  **Step 1 (Clean):** It waits for the USB stack to stabilize and removes old symlinks.
-4.  **Step 2 (Link):** It finds the correct gadget names (e.g., `mass_storage.gs6` vs `mass_storage.0`) and links them.
-    *   *Order matters:* Storage -> RNDIS -> Mouse -> Keyboard.
-5.  **Step 3 (Bounce):** It writes an empty string to `UDC`, waits, and writes the controller name back. This physically disconnects and reconnects the USB device logically.
+## 3. Root Shell & Error Handling
 
-## 3. Troubleshooting & Maintenance
+Standard `Runtime.exec()` is insufficient because it doesn't capture exit codes or stderr effectively for chained commands.
 
-*   **Driver Disconnects during Injection:**
-    *   This usually means the HID file descriptor was closed and reopened too quickly. Ensure `DuckyParser` uses `exec 3> $HID_DEV` redirection.
-    *   Check that the Report Size matches the kernel driver. Currently set to **8 bytes** (via `echo -ne` padding).
+*   **`RootShell.java`**: Uses a custom `CommandResult` class.
+*   It executes commands via `su` and appends a marker (`echo ::::EXITCODE::::$?::::`) to stdout.
+*   This allows us to parse the exact exit code of the root command and throw Java `IOException`s if a specific step in the USB setup fails.
 
-*   **Mass Storage Not Visible:**
-    *   The kernel often cannot read `/sdcard/`. The app uses a helper `resolvePhysicalPath` to translate this to `/data/media/0/`, which is the actual block device path.
-    *   Ensure the image file is not mounted by the OS itself.
+## 4. File System & Assets
 
-*   **ADB Disappears:**
-    *   The app attempts to preserve ADB by setting it as the "Base Config". If ADB breaks, toggling the "Enable ADB" switch in Arsenal and re-applying usually fixes it.
+*   **Logging:** Logs are written to `Context.getExternalFilesDir()` (`/sdcard/Android/data/...`) so they persist even if the app crashes, viewable via PC.
+*   **Dependencies:** We previously used `hid-keyboard` binaries but moved to the Base64 method to remove binary dependencies and architecture mismatches (ARM vs ARM64).
 
-## 4. Recent Changes (Parser Reversion)
-*   **Date:** December 2025
-*   **Change:** Reverted `printf` back to `echo -ne` and adjusted HID report padding.
-*   **Reasoning:** The optimization to use `printf` or send strictly 8 bytes caused compatibility issues with certain Android shells/kernels, leading to "stuck" modifier keys (like Ctrl). The parser now strictly follows the established 7-byte payload format that was verified to work.
+## 5. Key Mappings
+
+*   **DuckyParser:** Contains a hardcoded `ASCII_MAP` mapping characters to HID usage codes (e.g., 'a' -> 0x04).
+*   **Modifiers:** Supports explicit modifiers (CTRL, ALT, GUI, SHIFT) via bitwise OR operations on the modifier byte (Byte 0 of the report).
+*   **Protocol:** We strictly use the **Boot Keyboard Protocol** (8 bytes). Some kernels support 7 bytes, but 8 is the standard.
+
+---
+*Generated by Gemini CLI Agent*

@@ -32,6 +32,9 @@ public class MainActivity extends AppCompatActivity {
         
         Logger.init(this);
         Logger.log("DuckyIDE Started");
+        
+        // Extract helper binaries
+        AssetCopier.extractAssets(this);
 
         editor = findViewById(R.id.editor);
         statusLog = findViewById(R.id.status_log);

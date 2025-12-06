@@ -1,6 +1,8 @@
 package com.example.duckyide;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -148,24 +150,21 @@ public class DuckyParser {
     }
     
     private static class CustomDef {
-        String mod;
-        String key;
-        CustomDef(String mod, String key) { this.mod = mod; this.key = key; }
+        byte mod;
+        byte key;
+        CustomDef(byte mod, byte key) { this.mod = mod; this.key = key; }
     }
 
     public static ParseResult parseToShell(String duckyScript) {
         StringBuilder shellScript = new StringBuilder();
         List<String> errors = new ArrayList<>();
         Map<String, CustomDef> customDefs = new HashMap<>();
+        ByteArrayOutputStream currentChunk = new ByteArrayOutputStream();
 
         shellScript.append("#!/bin/sh\n");
         shellScript.append("HID_DEV=/dev/hidg0\n");
-        shellScript.append("exec 3> $HID_DEV\n"); // Open FD 3
-        shellScript.append("write_report() {\n");
-        shellScript.append("  echo -ne \"$1\" >&3\n");
-        shellScript.append("  sleep 0.02\n");
-        shellScript.append("  echo -ne \"\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\" >&3\n");
-        shellScript.append("}\n\n");
+        // Optimized Base64 piping approach:
+        // echo "BASE64" | base64 -d | dd of=$HID_DEV bs=8
 
         String[] lines = duckyScript.split("\n");
         int lineNum = 0;
@@ -175,8 +174,6 @@ public class DuckyParser {
             line = line.trim();
             if (line.isEmpty() || line.startsWith("REM")) continue;
 
-            // Split line into command and arguments
-            // Limit split to 2 initially to separate first word
             String[] parts = line.split("\\s+", 2);
             String cmd = parts[0].toUpperCase();
 
@@ -187,6 +184,10 @@ public class DuckyParser {
                     continue;
                 }
                 try {
+                    // Flush current buffer before delay
+                    appendBlobCommand(shellScript, currentChunk.toByteArray());
+                    currentChunk.reset();
+                    
                     int delay = Integer.parseInt(parts[1].trim());
                     double sleepTime = Math.max(delay / 1000.0, 0.02); 
                     shellScript.append("sleep ").append(sleepTime).append("\n");
@@ -202,13 +203,11 @@ public class DuckyParser {
                     errors.add("Line " + lineNum + ": STRING missing text");
                     continue;
                 }
-                String text = line.substring(7); // Preserve spaces after STRING
+                String text = line.substring(7);
                 for (char c : text.toCharArray()) {
                     HidCode mapping = ASCII_MAP.get(c);
                     if (mapping != null) {
-                        appendReport(shellScript, mapping.mod, mapping.key);
-                    } else {
-                        // Unknown char, maybe warn?
+                        addPressRelease(currentChunk, mapping.mod, mapping.key);
                     }
                 }
                 continue;
@@ -221,17 +220,21 @@ public class DuckyParser {
                     errors.add("Line " + lineNum + ": Usage: DEFINE [NAME] [MOD_HEX] [KEY_HEX]");
                     continue;
                 }
-                String name = defParts[1].toUpperCase();
-                String mod = defParts[2].replace("0x", "");
-                String key = defParts[3].replace("0x", "");
-                customDefs.put(name, new CustomDef("\\x" + mod, "\\x" + key));
+                try {
+                    String name = defParts[1].toUpperCase();
+                    int mod = Integer.decode(defParts[2]);
+                    int key = Integer.decode(defParts[3]);
+                    customDefs.put(name, new CustomDef((byte)mod, (byte)key));
+                } catch (NumberFormatException e) {
+                    errors.add("Line " + lineNum + ": Invalid Hex in DEFINE");
+                }
                 continue;
             }
 
             // 4. CUSTOM DEF
             if (customDefs.containsKey(cmd)) {
                 CustomDef def = customDefs.get(cmd);
-                shellScript.append("write_report \"" + def.mod + "\\x00" + def.key + "\\x00\\x00\\x00\\x00\"\\n");
+                addPressRelease(currentChunk, def.mod, def.key);
                 continue;
             }
 
@@ -240,57 +243,65 @@ public class DuckyParser {
                 byte mod = MODIFIERS.get(cmd);
                 if (parts.length > 1) {
                     String arg = parts[1].trim();
-                    // Resolve argument (could be a Key Command "F1" or a single char "r")
                     Byte key = null;
                     
-                    // Check if arg is a known command key (e.g. GUI DELETE)
                     if (KEY_COMMANDS.containsKey(arg.toUpperCase())) {
                         key = KEY_COMMANDS.get(arg.toUpperCase());
                     } 
-                    // Check if arg is single char (e.g. GUI r)
                     else if (arg.length() == 1) {
                         HidCode mapping = ASCII_MAP.get(arg.charAt(0));
                         if (mapping != null) {
                             key = mapping.key;
-                            // Note: We ignore mapping.mod (Shift) if user did explicit modifier?
-                            // Ducky behavior: CTRL A -> Ctrl + A (which is Shift+a) -> Ctrl+Shift+a.
-                            // We should probably OR them.
-                            mod |= mapping.mod;
+                            mod |= mapping.mod; // Combine mods
                         }
                     }
                     
                     if (key != null) {
-                        appendReport(shellScript, mod, key);
+                        addPressRelease(currentChunk, mod, key);
                     } else {
                         errors.add("Line " + lineNum + ": Unknown key '" + arg + "'");
                     }
                 } else {
-                    // Modifier alone (press and release modifier?)
-                    // Ducky usually implies just tapping the modifier if no arg.
-                    // We send Mod + No Key.
-                    appendReport(shellScript, mod, (byte)0x00);
+                    // Modifier alone (tap modifier)
+                    addPressRelease(currentChunk, mod, (byte)0x00);
                 }
                 continue;
             }
 
-            // 6. KEY COMMANDS (ENTER, F1, etc.)
+            // 6. KEY COMMANDS
             if (KEY_COMMANDS.containsKey(cmd)) {
                 byte key = KEY_COMMANDS.get(cmd);
-                appendReport(shellScript, (byte)0x00, key);
+                addPressRelease(currentChunk, (byte)0x00, key);
                 continue;
             }
 
-            errors.add("Line " + lineNum + ": Unknown command '" + cmd + "'");
+            errors.add("Line " + lineNum + ": Unknown command '" + cmd + "'\n");
         }
         
-        shellScript.append("exec 3>&-\n"); // Close FD 3
+        // Flush remaining bytes
+        appendBlobCommand(shellScript, currentChunk.toByteArray());
+        
         return new ParseResult(shellScript.toString(), errors);
     }
     
-    private static void appendReport(StringBuilder sb, byte mod, byte key) {
-        String hexMod = String.format("\\x%02x", mod);
-        String hexKey = String.format("\\x%02x", key);
-        // 7-byte report: Mod, Res, Key, 0, 0, 0, 0
-        sb.append("write_report \"" + hexMod + "\\x00" + hexKey + "\\x00\\x00\\x00\\x00\"\n");
+    private static void addPressRelease(ByteArrayOutputStream os, byte mod, byte key) {
+        // PRESS (8 bytes)
+        os.write(mod); os.write(0); os.write(key);
+        os.write(0); os.write(0); os.write(0); os.write(0); os.write(0);
+
+        // RELEASE (8 bytes)
+        os.write(0); os.write(0); os.write(0);
+        os.write(0); os.write(0); os.write(0); os.write(0); os.write(0);
+    }
+
+    private static void appendBlobCommand(StringBuilder script, byte[] data) {
+        if (data.length == 0) return;
+        
+        String b64 = Base64.getEncoder().encodeToString(data);
+        
+        // This is the "Atomic" trick using dd
+        // We decode base64, then use dd to push it to the HID gadget
+        // bs=8 ensures we write in 8-byte chunks (HID requirement)
+        script.append("echo \"" + b64 + "\" | base64 -d | dd of=$HID_DEV bs=8 2>/dev/null\n");
     }
 }

@@ -1,35 +1,47 @@
-# DuckyIDE - Android HID Injector
+# DuckyIDE for Android
 
-A native Android application that allows you to write, save, and execute Ducky Scripts directly from your device.
+**DuckyIDE** is a native Android application that turns a rooted device into a powerful USB attack platform. It allows you to write, compile, and inject Ducky Script payloads over USB HID, as well as manage complex USB gadget compositions (Mass Storage, RNDIS, ADB).
 
 ## Features
-- **Hacker Theme:** Dark mode with green terminal font.
-- **Ducky Script Support:** Compiles standard Ducky Script (STRING, DELAY, GUI, ENTER) into HID injection commands.
-- **Root Injection:** Uses `su` access to write directly to `/dev/hidg0`.
-- **Efficiency:** Built in native Java to ensure minimal overhead on low-end devices.
 
-## Prerequisites
-1.  **Rooted Android Device:** The app requires `su` binary availability.
-2.  **HID Kernel Support:** Your device kernel must have HID Gadget support enabled and available at `/dev/hidg0`. This is common in Nethunter kernels.
+*   **Ducky Script Editor:** Syntax highlighting and fast compilation.
+*   **USB Arsenal:**
+    *   **Composite Devices:** Run ADB, Mass Storage, and HID simultaneously.
+    *   **Total Control:** Bypasses Android's USB limitations by manually orchestrating the ConfigFS gadget.
+    *   **ISO Mounting:** Mount raw disk images as USB Mass Storage (CD-ROM or Flash Drive).
+*   **High-Performance Injection:**
+    *   Uses a custom **Base64 Stream Pipelining** engine.
+    *   Compiles Ducky Script into a raw binary stream, encoded as Base64, and piped directly to the HID driver (`/dev/hidg0`) using `dd`.
+    *   Zero process overhead per keystroke—blazing fast execution.
+*   **Compatibility:**
+    *   Implements **Dynamic Function Enumeration** (`f1`, `f2`...) to support strict kernels (Samsung OneUI, Pixel Stock).
+    *   VID/PID spoofing.
 
-## Build Instructions
-1.  Open this folder in **Android Studio**.
-2.  Sync Gradle.
-3.  Build and Install APK to your device.
+## Requirements
+
+*   **Root Access:** Essential for modifying USB gadget configurations and writing to `/dev/hidg0`.
+*   **Kernel Support:** The device kernel must support **ConfigFS** and the relevant USB functions (`hid`, `mass_storage`, etc.). Most modern kernels (Android 10+) support this, especially Nethunter kernels.
+
+## Installation
+
+1.  Build the project using Android Studio or `./gradlew assembleDebug`.
+2.  Install the APK on your rooted device.
+3.  Grant Root permissions when prompted.
 
 ## Usage
-1.  Grant Root permissions when prompted.
-2.  Type your script in the editor:
-    ```
-    DELAY 1000
-    GUI r
-    DELAY 500
-    STRING notepad
-    ENTER
-    DELAY 1000
-    STRING Hello from DuckyIDE!
-    ```
-3.  Click **INJECT**.
 
-## Keymap Note
-This prototype supports basic alphanumeric keys (a-z, 0-9), Space, Enter, and GUI. Complex modifiers or special symbols may need to be added to `DuckyParser.java`.
+### 1. Writing Scripts
+*   Open the editor.
+*   Write standard Ducky Script 1.0 code (e.g., `DELAY 1000`, `STRING Hello World`, `GUI r`).
+*   Tap **RUN** to inject immediately.
+
+### 2. USB Arsenal
+*   Navigate to the "USB Arsenal" tab.
+*   Select your desired USB interfaces (e.g., "ADB + Mass Storage + HID").
+*   Tap **APPLY CONFIG**.
+    *   *Note:* This will momentarily disconnect ADB as the USB stack is reset.
+*   To mount an image, select a file from the dropdown (files must be in `/sdcard/`) and tap **MOUNT**.
+
+## Technical Architecture
+
+For a deep dive into the driver interactions, gadget orchestration, and injection strategies, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).

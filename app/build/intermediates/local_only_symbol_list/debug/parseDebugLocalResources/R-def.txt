@@ -21,7 +21,10 @@ id chk_func_rndis
 id chk_func_storage
 id chk_ro
 id editor
+id et_manuf
 id et_pid
+id et_product
+id et_serial
 id et_vid
 id spinner_images
 id spinner_vid_pid_preset

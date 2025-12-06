@@ -1,6 +1,7 @@
 package com.example.duckyide;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class UsbController {
@@ -15,22 +16,21 @@ public class UsbController {
 
     public static String getEnabledFunctions() {
         // Return a list of what is actually linked in configs/b.1
-        // PLUS the system state property to correctly detect ADB
-        String links = RootShell.exec("ls " + GADGET_PATH + "/configs/b.1 2>&1");
-        String state = RootShell.exec("getprop sys.usb.state");
-        return links + "," + state;
+        // This is the source of truth for the kernel state
+        return RootShell.exec("ls " + GADGET_PATH + "/configs/b.1 2>&1").stdout;
     }
 
     /**
      * Applies USB configuration.
      * @param functions Comma-separated functions (e.g. "hid,mass_storage,adb")
-     * @param vid Vendor ID (e.g. "0x1d6b")
-     * @param pid Product ID (e.g. "0x0104")
      * @return Log string. Starts with "SUCCESS" if successful, otherwise contains error details.
      */
     public static String setUsbFunctions(String functions, String vid, String pid) {
         StringBuilder log = new StringBuilder();
-        log.append("Target: ").append(functions).append(" [").append(vid).append(":").append(pid).append("]\n");
+        log.append("Target: ").append(functions).append("\n");
+        
+        // Function Counter for Nethunter-style "f1", "f2" naming
+        int funcIndex = 0;
 
         try {
             boolean enableHid = functions.contains("hid");
@@ -39,75 +39,109 @@ public class UsbController {
             boolean enableMtp = functions.contains("mtp");
             boolean enableAdb = functions.contains("adb");
             
-            String baseConfig = enableAdb ? "adb" : "none";
-            log.append("Base Config: ").append(baseConfig).append("\n");
+            // 1. DISABLE UDC (Stop Gadget)
+            disableUDC(log);
 
-            // 1. Cleanup Custom Gadgets
+            // 2. CLEANUP & RESET (Total Control Mode)
+            logExec(log, "stop adbd");
+            logExec(log, "setprop sys.usb.ffs.ready 0");
+            //logExec(log, "setprop sys.usb.config none");
+           // pollState("none", log);
+            
+            // Manual cleanup of our config folder
             cleanupGadgets(log);
-
-            // 2. Reset System State
-            String currentBase = RootShell.exec("getprop sys.usb.config").trim();
-            if (!currentBase.equals(baseConfig) || baseConfig.equals("none")) {
-                log.append("Resetting USB stack...\n");
-                logExec(log, "setprop sys.usb.config none");
-                pollState("none", log);
-                
-                if (!baseConfig.equals("none")) {
-                    log.append("Setting base: ").append(baseConfig).append("\n");
-                    logExec(log, "setprop sys.usb.config " + baseConfig);
-                    pollState(baseConfig, log);
-                }
-            } else {
-                log.append("Base config already match.\n");
-            }
 
             if (functions.equals("none")) return "SUCCESS\n" + log.toString();
 
-            // 3. Locate Config Path
+            // 3. Resolve Paths
             String configPath = GADGET_PATH + "/configs/b.1";
             if (!exists(configPath)) {
-                // Try to find fallback
-                String find = RootShell.exec("ls " + GADGET_PATH + "/configs/ | head -n 1").trim();
+                String find = RootShell.exec("ls " + GADGET_PATH + "/configs/ | head -n 1").stdout.trim();
                 if (!find.isEmpty()) configPath = GADGET_PATH + "/configs/" + find;
-                log.append("Config path resolved: ").append(configPath).append("\n");
             }
 
-            // 4. Link Gadgets (Order: Storage -> RNDIS -> MTP -> Mouse -> Keyboard)
+            // 4. LINK GADGETS (Sequential 'f1', 'f2'... naming)
+            
+
+            try { Thread.sleep(100); } catch (InterruptedException e) {}
+
+            // HID (Mouse -> Keyboard)
+            if (enableHid) {
+
+                setupKeyboardGadget(log);
+                funcIndex++;
+                logExec(log, "ln -s " + GADGET_PATH + "/functions/hid.0 " + configPath + "/f" + funcIndex);
+
+
+                setupMouseGadget(log);
+                funcIndex++;
+                logExec(log, "ln -s " + GADGET_PATH + "/functions/hid.1 " + configPath + "/f" + funcIndex);
+
+
+            }
+
+
+            // Mass Storage
             if (enableStorage) {
-                // Prevent auto-mount of previous image
                 String msFunc = findFunction("mass_storage");
                 if (!msFunc.isEmpty()) {
                     logExec(log, "echo '' > " + GADGET_PATH + "/functions/" + msFunc + "/lun.0/file");
                 }
-                linkFunction(log, "mass_storage", configPath);
-            }
-            if (enableRndis) linkFunction(log, "rndis", configPath);
-            if (enableMtp) linkFunction(log, "mtp", configPath);
-
-            if (enableHid) {
-                setupMouseGadget(log);
-                logExec(log, "ln -s " + GADGET_PATH + "/functions/hid.1 " + configPath + "/hid.1");
-                
-                setupKeyboardGadget(log);
-                logExec(log, "ln -s " + GADGET_PATH + "/functions/hid.0 " + configPath + "/hid.0");
+                funcIndex++;
+                linkFunction(log, "mass_storage", configPath, "f" + funcIndex);
             }
 
-            // 5. Set Identity (VID/PID)
+            // RNDIS
+            if (enableRndis) {
+                funcIndex++;
+                linkFunction(log, "rndis", configPath, "f" + funcIndex);
+            }
+            
+            // MTP
+            if (enableMtp) {
+                funcIndex++;
+                linkFunction(log, "mtp", configPath, "f" + funcIndex);
+            }
+
+            // ADB (Manual Link)
+            if (enableAdb) {
+                log.append("Linking ADB manually...\n");
+                String adbFunc = findFunction("ffs.adb");
+                if (adbFunc.isEmpty()) adbFunc = "ffs.adb";
+
+                if (exists(GADGET_PATH + "/functions/" + adbFunc)) {
+                    funcIndex++;
+                    logExec(log, "ln -s " + GADGET_PATH + "/functions/" + adbFunc + " " + configPath + "/f" + funcIndex);
+                } else {
+                    log.append("WARN: ffs.adb not found. ADB might fail.\n");
+                }
+            }
+            
+
+
+
+            // 5. IDENTITY
             if (vid != null && !vid.isEmpty()) logExec(log, "echo " + vid + " > " + GADGET_PATH + "/idVendor");
             if (pid != null && !pid.isEmpty()) logExec(log, "echo " + pid + " > " + GADGET_PATH + "/idProduct");
 
-            // 6. Bounce UDC
-            bounceUDC(log);
 
-            // 7. Validation
+            // 7. START ADBD (If enabled)
+            if (enableAdb) {
+                logExec(log, "start adbd");
+                try { Thread.sleep(1000); } catch (Exception e) {}
+                logExec(log, "setprop sys.usb.ffs.ready 1");
+                try { Thread.sleep(1000); } catch (Exception e) {}
+            }
+
+            // 6. ENABLE UDC
+            enableUDC(log);
+
+
+            // 8. VALIDATION
             if (enableHid) {
-                 if (!pollFile("/dev/hidg0", log)) {
-                     throw new IOException("Validation Failed: /dev/hidg0 missing.");
-                 }
+                 if (!pollFile("/dev/hidg0", log)) throw new IOException("Validation Failed: /dev/hidg0 missing.");
                  logExec(log, "chmod 666 /dev/hidg0");
-                 if (pollFile("/dev/hidg1", log)) {
-                     logExec(log, "chmod 666 /dev/hidg1");
-                 }
+                 if (pollFile("/dev/hidg1", log)) logExec(log, "chmod 666 /dev/hidg1");
             }
             
             return "SUCCESS\n" + log.toString();
@@ -120,48 +154,75 @@ public class UsbController {
     
     private static void cleanupGadgets(StringBuilder log) throws IOException {
         String configPath = GADGET_PATH + "/configs/b.1";
-        String listing = RootShell.exec("ls " + configPath);
+        String listing = RootShell.exec("ls " + configPath).stdout;
         
         if (listing.trim().isEmpty() || listing.contains("No such file")) return;
 
-        String[] files = listing.split("[\\s\\n]+");
+        String[] files = listing.split("\\s+");
         for (String f : files) {
             f = f.trim();
             if (f.isEmpty()) continue;
             
-            // Remove our custom gadgets
-            if (f.startsWith("hid.") || 
+            // Nethunter uses 'f1', 'f2', etc. We clean those up too.
+            // Also clean standard names in case they exist from old runs.
+            if (f.matches("f\\d+") || // Matches f1, f2, f10
+                f.startsWith("hid.") || 
                 f.startsWith("mass_storage") || 
                 f.startsWith("rndis") || 
-                f.startsWith("mtp")) { // Added missing closing parenthesis
+                f.startsWith("mtp") ||
+                f.startsWith("ffs.adb")) {
                 
                 logExec(log, "rm " + configPath + "/" + f);
             }
         }
     }
 
+    private static void disableUDC(StringBuilder log) throws IOException {
+        log.append("Disabling UDC...\n");
+        logExec(log, "echo \"\" > " + GADGET_PATH + "/UDC");
+        try { Thread.sleep(500); } catch (Exception e) {}
+    }
+
+    private static void enableUDC(StringBuilder log) throws IOException {
+        String udc = RootShell.exec("ls /sys/class/udc").stdout.trim();
+        if (udc.isEmpty()) {
+            log.append("WARN: No UDC found.\n");
+            return;
+        }
+        log.append("Enabling UDC: ").append(udc).append("\n");
+        logExec(log, "echo " + udc + " > " + GADGET_PATH + "/UDC");
+    }
+
     private static void logExec(StringBuilder log, String cmd) throws IOException {
         log.append("> ").append(cmd).append("\n");
-        // Capture stderr too
-        String out = RootShell.exec(cmd + " 2>&1"); 
-        if (out != null && !out.trim().isEmpty()) {
-            log.append("  ").append(out.trim()).append("\n");
+        RootShell.CommandResult res = RootShell.exec(cmd);
+        if (!res.stdout.isEmpty()) {
+            log.append("  [stdout] ").append(res.stdout).append("\n");
+        }
+        if (!res.stderr.isEmpty()) {
+            log.append("  [stderr] ").append(res.stderr).append("\n");
+        }
+        if (res.exitCode != 0) {
+            log.append("  [exit] ").append(res.exitCode).append("\n");
+            throw new IOException("Command failed: " + cmd + " (Exit " + res.exitCode + ")");
+        } else {
+            log.append("  [exit] ").append(res.exitCode).append("\n");
         }
     }
     
     private static boolean exists(String path) {
-        String out = RootShell.exec("ls -d " + path + " 2>&1");
-        return !out.contains("No such file");
+        return RootShell.exec("ls -d " + path).isSuccess();
     }
 
     private static void pollState(String expected, StringBuilder log) throws IOException {
         long start = System.currentTimeMillis();
         while (System.currentTimeMillis() - start < 5000) { 
-             String curr = RootShell.exec("getprop sys.usb.state").trim();
+             String curr = RootShell.exec("getprop sys.usb.state").stdout.trim();
              if (curr.equals(expected)) return;
              try { Thread.sleep(100); } catch (InterruptedException e) {}
         }
-        throw new IOException("Timeout waiting for state: " + expected);
+        log.append("WARN: Timeout waiting for state: ").append(expected).append("\n");
+        throw new IOException("Timeout waiting for USB state: " + expected);
     }
     
     private static boolean pollFile(String path, StringBuilder log) {
@@ -174,74 +235,67 @@ public class UsbController {
         return false;
     }
 
-    private static void linkFunction(StringBuilder log, String prefix, String configPath) throws IOException {
+    private static void linkFunction(StringBuilder log, String prefix, String configPath, String linkName) throws IOException {
         String func = findFunction(prefix);
         if (!func.isEmpty()) {
-            logExec(log, "ln -s " + GADGET_PATH + "/functions/" + func + " " + configPath + "/" + func);
+            logExec(log, "ln -s " + GADGET_PATH + "/functions/" + func + " " + configPath + "/" + linkName);
         } else {
             log.append("WARN: Function not found: ").append(prefix).append("\n");
         }
     }
 
     private static String findFunction(String prefix) {
-        try {
-            String output = RootShell.exec("ls " + GADGET_PATH + "/functions/ | grep " + prefix).trim();
-            if (output.isEmpty()) return "";
-            
-            // Prioritize vendor-specific naming (e.g. .gs6 for Pixel/Samsung, .usb0)
-            if (output.contains(prefix + ".gs6")) return prefix + ".gs6";
-            if (output.contains(prefix + ".usb0")) return prefix + ".usb0";
-            
-            // Fallback to first found
-            return output.split("[\\s\\n]+")[0].trim();
-        } catch (Exception e) { return ""; }
+        RootShell.CommandResult res = RootShell.exec("ls " + GADGET_PATH + "/functions/ | grep " + prefix);
+        String output = res.stdout.trim();
+        if (output.isEmpty()) return "";
+        if (output.contains(prefix + ".gs6")) return prefix + ".gs6";
+        if (output.contains(prefix + ".usb0")) return prefix + ".usb0";
+        return output.split("\\s+")[0].trim();
     }
 
-    private static void bounceUDC(StringBuilder log) throws IOException {
-        String udc = RootShell.exec("ls /sys/class/udc").trim();
-        if (udc.isEmpty()) {
-            log.append("WARN: No UDC found, skipping bounce.\n");
-            return;
+    private static void writeDescriptor(String path, String hexString) throws IOException {
+        int len = hexString.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(hexString.charAt(i), 16) << 4)
+                                 + Character.digit(hexString.charAt(i+1), 16));
         }
-        log.append("Bouncing UDC: ").append(udc).append("\n");
-        logExec(log, "echo '' > " + GADGET_PATH + "/UDC");
-        try { Thread.sleep(100); } catch (Exception e) {} 
-        logExec(log, "echo " + udc + " > " + GADGET_PATH + "/UDC");
+        
+        File tempFile = File.createTempFile("desc", null);
+        FileOutputStream fos = new FileOutputStream(tempFile);
+        fos.write(data);
+        fos.close();
+
+        RootShell.CommandResult catRes = RootShell.exec("cat " + tempFile.getAbsolutePath() + " > " + path + "/report_desc");
+        tempFile.delete();
+        if (!catRes.isSuccess()) {
+             throw new IOException("Failed to write descriptor: " + catRes.stderr);
+        }
     }
 
     private static void setupKeyboardGadget(StringBuilder log) throws IOException {
         String hidPath = GADGET_PATH + "/functions/hid.0";
-        log.append("Setting up Keyboard (hid.0)...\n");
-        
+        log.append("Setting up Keyboard (hid.0)...");
         logExec(log, "mkdir -p " + hidPath);
         logExec(log, "echo 1 > " + hidPath + "/protocol");
         logExec(log, "echo 1 > " + hidPath + "/subclass");
         logExec(log, "echo 8 > " + hidPath + "/report_length");
         
-        StringBuilder hexEscaped = new StringBuilder();
-        for (int i = 0; i < KEYBOARD_REPORT_DESC.length(); i += 2) {
-            hexEscaped.append("\\\\x").append(KEYBOARD_REPORT_DESC.substring(i, i + 2));
-        }
-        RootShell.exec("echo -ne \"" + hexEscaped.toString() + "\" > " + hidPath + "/report_desc");
+        writeDescriptor(hidPath, KEYBOARD_REPORT_DESC);
     }
 
     private static void setupMouseGadget(StringBuilder log) throws IOException {
         String hidPath = GADGET_PATH + "/functions/hid.1";
-        log.append("Setting up Mouse (hid.1)...\n");
-        
+        log.append("Setting up Mouse (hid.1)...");
         logExec(log, "mkdir -p " + hidPath);
         logExec(log, "echo 1 > " + hidPath + "/protocol");
         logExec(log, "echo 2 > " + hidPath + "/subclass");
         logExec(log, "echo 4 > " + hidPath + "/report_length");
         
-        StringBuilder hexEscaped = new StringBuilder();
-        for (int i = 0; i < MOUSE_REPORT_DESC.length(); i += 2) {
-            hexEscaped.append("\\\\x").append(MOUSE_REPORT_DESC.substring(i, i + 2));
-        }
-        RootShell.exec("echo -ne \"" + hexEscaped.toString() + "\" > " + hidPath + "/report_desc");
+        writeDescriptor(hidPath, MOUSE_REPORT_DESC);
     }
 
-    // --- Mounting Logic (Kept strict but robust) ---
+    // --- Mounting Logic ---
 
     public static String mountImage(String imagePath, boolean readOnly, boolean cdrom) {
         String func = findFunction("mass_storage");
@@ -256,13 +310,14 @@ public class UsbController {
         cmd.append("echo '").append(cdrom ? "1" : "0").append("' > ").append(lunPath).append("/cdrom; ");
         cmd.append("echo '").append(physicalPath).append("' > ").append(lunPath).append("/file");
         
-        return RootShell.exec(cmd.toString() + " 2>&1");
+        RootShell.CommandResult res = RootShell.exec(cmd.toString());
+        return res.isSuccess() ? "" : "Error: " + res.stderr;
     }
     
     public static String getMountedImage() {
          String func = findFunction("mass_storage");
          if (func.isEmpty()) return "";
-         return RootShell.exec("cat " + GADGET_PATH + "/functions/" + func + "/lun.0/file");
+         return RootShell.exec("cat " + GADGET_PATH + "/functions/" + func + "/lun.0/file").stdout;
     }
     
     public static void unmountImage() {

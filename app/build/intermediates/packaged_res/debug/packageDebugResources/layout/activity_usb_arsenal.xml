@@ -159,6 +159,49 @@
                 android:inputType="textNoSuggestions"/>
         </LinearLayout>
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[ DEVICE STRINGS ]"
+            android:textColor="@color/terminal_green"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp"/>
+
+        <EditText
+            android:id="@+id/et_manuf"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Manufacturer (Android)"
+            android:textColor="@color/terminal_green"
+            android:textColorHint="#5500FF00"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:inputType="textNoSuggestions"/>
+
+        <EditText
+            android:id="@+id/et_product"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Product (Android)"
+            android:textColor="@color/terminal_green"
+            android:textColorHint="#5500FF00"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:inputType="textNoSuggestions"/>
+
+        <EditText
+            android:id="@+id/et_serial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Serial (0123456789ABCDEF)"
+            android:textColor="@color/terminal_green"
+            android:textColorHint="#5500FF00"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:inputType="textNoSuggestions"/>
+
     </LinearLayout>
 
     <Button
@@ -289,13 +332,13 @@
         android:id="@+id/status_log_arsenal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="15"
-        android:scrollbars="vertical"
+        android:minHeight="100dp"
         android:textColor="#AAAAAA"
         android:textSize="10sp"
         android:fontFamily="monospace"
         android:text="> Waiting for input..."
-        android:paddingTop="16dp"/>
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"/>
 
 </LinearLayout>
 </ScrollView>

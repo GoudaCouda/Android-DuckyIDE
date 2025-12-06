@@ -7,27 +7,136 @@ import java.util.Map;
 
 public class DuckyParser {
 
-    private static final Map<Character, Byte> CHAR_MAP = new HashMap<>();
-    
-    static {
-        // Lowercase a-z (HID 0x04 - 0x1D)
-        for (int i = 0; i < 26; i++) {
-            CHAR_MAP.put((char)('a' + i), (byte)(0x04 + i));
-        }
-        // Numbers 1-9, 0 (HID 0x1E - 0x27)
-        for (int i = 1; i <= 9; i++) {
-            CHAR_MAP.put((char)('0' + i), (byte)(0x1E + i - 1)); // 1 starts at 1E
-        }
-        CHAR_MAP.put('0', (byte)0x27);
-        
-        CHAR_MAP.put(' ', (byte)0x2C);
-        CHAR_MAP.put('\n', (byte)0x28);
-        // Add common symbols for convenience
-        CHAR_MAP.put('.', (byte)0x37);
-        CHAR_MAP.put('-', (byte)0x2D);
-        CHAR_MAP.put('/', (byte)0x38);
+    // Structure to hold Key + Modifier for a single character
+    private static class HidCode {
+        byte key;
+        byte mod;
+        HidCode(int key, int mod) { this.key = (byte)key; this.mod = (byte)mod; }
+        HidCode(int key) { this(key, 0); }
     }
+
+    private static final Map<Character, HidCode> ASCII_MAP = new HashMap<>();
+    private static final Map<String, Byte> KEY_COMMANDS = new HashMap<>();
+    private static final Map<String, Byte> MODIFIERS = new HashMap<>();
     
+    // HID Modifier Constants
+    private static final byte MOD_CTRL  = 0x01;
+    private static final byte MOD_SHIFT = 0x02;
+    private static final byte MOD_ALT   = 0x04;
+    private static final byte MOD_GUI   = 0x08; // Win/Command
+
+    static {
+        // --- ASCII MAP (Char -> Key + Default Mod) ---
+        
+        // a-z
+        for (int i = 0; i < 26; i++) {
+            ASCII_MAP.put((char)('a' + i), new HidCode(0x04 + i));
+            ASCII_MAP.put((char)('A' + i), new HidCode(0x04 + i, MOD_SHIFT));
+        }
+        // 1-9, 0
+        // 1 starts at 0x1E. 0 is 0x27.
+        for (int i = 1; i <= 9; i++) {
+            ASCII_MAP.put((char)('0' + i), new HidCode(0x1E + i - 1));
+        }
+        ASCII_MAP.put('0', new HidCode(0x27));
+
+        // Symbols (US Layout)
+        mapSymbol('!', '1', MOD_SHIFT);
+        mapSymbol('@', '2', MOD_SHIFT);
+        mapSymbol('#', '3', MOD_SHIFT);
+        mapSymbol('$', '4', MOD_SHIFT);
+        mapSymbol('%', '5', MOD_SHIFT);
+        mapSymbol('^', '6', MOD_SHIFT);
+        mapSymbol('&', '7', MOD_SHIFT);
+        mapSymbol('*', '8', MOD_SHIFT);
+        mapSymbol('(', '9', MOD_SHIFT);
+        mapSymbol(')', '0', MOD_SHIFT);
+
+        ASCII_MAP.put(' ', new HidCode(0x2C)); // Space
+        ASCII_MAP.put('\n', new HidCode(0x28)); // Enter
+        ASCII_MAP.put('\t', new HidCode(0x2B)); // Tab
+
+        ASCII_MAP.put('-', new HidCode(0x2D));
+        ASCII_MAP.put('_', new HidCode(0x2D, MOD_SHIFT));
+        ASCII_MAP.put('=', new HidCode(0x2E));
+        ASCII_MAP.put('+', new HidCode(0x2E, MOD_SHIFT));
+        ASCII_MAP.put('[', new HidCode(0x2F));
+        ASCII_MAP.put('{', new HidCode(0x2F, MOD_SHIFT));
+        ASCII_MAP.put(']', new HidCode(0x30));
+        ASCII_MAP.put('}', new HidCode(0x30, MOD_SHIFT));
+        ASCII_MAP.put('\\', new HidCode(0x31));
+        ASCII_MAP.put('|', new HidCode(0x31, MOD_SHIFT));
+        ASCII_MAP.put(';', new HidCode(0x33));
+        ASCII_MAP.put(':', new HidCode(0x33, MOD_SHIFT));
+        ASCII_MAP.put((char)0x27, new HidCode(0x34)); // Single Quote
+        ASCII_MAP.put((char)0x22, new HidCode(0x34, MOD_SHIFT)); // Double Quote
+        ASCII_MAP.put('`', new HidCode(0x35));
+        ASCII_MAP.put('~', new HidCode(0x35, MOD_SHIFT));
+        ASCII_MAP.put(',', new HidCode(0x36));
+        ASCII_MAP.put('<', new HidCode(0x36, MOD_SHIFT));
+        ASCII_MAP.put('.', new HidCode(0x37));
+        ASCII_MAP.put('>', new HidCode(0x37, MOD_SHIFT));
+        ASCII_MAP.put('/', new HidCode(0x38));
+        ASCII_MAP.put('?', new HidCode(0x38, MOD_SHIFT));
+
+        // --- KEY COMMANDS (Keywords -> Key Code) ---
+        KEY_COMMANDS.put("ENTER", (byte)0x28);
+        KEY_COMMANDS.put("ESCAPE", (byte)0x29);
+        KEY_COMMANDS.put("ESC", (byte)0x29);
+        KEY_COMMANDS.put("BACKSPACE", (byte)0x2A);
+        KEY_COMMANDS.put("TAB", (byte)0x2B);
+        KEY_COMMANDS.put("SPACE", (byte)0x2C);
+        KEY_COMMANDS.put("CAPSLOCK", (byte)0x39);
+        KEY_COMMANDS.put("PRINTSCREEN", (byte)0x46);
+        KEY_COMMANDS.put("SCROLLLOCK", (byte)0x47);
+        KEY_COMMANDS.put("PAUSE", (byte)0x48);
+        KEY_COMMANDS.put("BREAK", (byte)0x48);
+        KEY_COMMANDS.put("INSERT", (byte)0x49);
+        KEY_COMMANDS.put("HOME", (byte)0x4A);
+        KEY_COMMANDS.put("PAGEUP", (byte)0x4B);
+        KEY_COMMANDS.put("DELETE", (byte)0x4C);
+        KEY_COMMANDS.put("END", (byte)0x4D);
+        KEY_COMMANDS.put("PAGEDOWN", (byte)0x4E);
+        KEY_COMMANDS.put("RIGHTARROW", (byte)0x4F);
+        KEY_COMMANDS.put("RIGHT", (byte)0x4F);
+        KEY_COMMANDS.put("LEFTARROW", (byte)0x50);
+        KEY_COMMANDS.put("LEFT", (byte)0x50);
+        KEY_COMMANDS.put("DOWNARROW", (byte)0x51);
+        KEY_COMMANDS.put("DOWN", (byte)0x51);
+        KEY_COMMANDS.put("UPARROW", (byte)0x52);
+        KEY_COMMANDS.put("UP", (byte)0x52);
+        KEY_COMMANDS.put("MENU", (byte)0x65);
+        KEY_COMMANDS.put("APP", (byte)0x65);
+
+        for (int i = 1; i <= 12; i++) {
+            KEY_COMMANDS.put("F" + i, (byte)(0x3A + i - 1));
+        }
+
+        // --- MODIFIERS (Keywords -> Mod Bitmap) ---
+        MODIFIERS.put("CTRL", MOD_CTRL);
+        MODIFIERS.put("CONTROL", MOD_CTRL);
+        MODIFIERS.put("SHIFT", MOD_SHIFT);
+        MODIFIERS.put("ALT", MOD_ALT);
+        MODIFIERS.put("GUI", MOD_GUI);
+        MODIFIERS.put("WINDOWS", MOD_GUI);
+        MODIFIERS.put("COMMAND", MOD_GUI);
+
+        // Combos
+        MODIFIERS.put("CTRL-ALT", (byte)(MOD_CTRL | MOD_ALT));
+        MODIFIERS.put("CTRL-SHIFT", (byte)(MOD_CTRL | MOD_SHIFT));
+        MODIFIERS.put("ALT-SHIFT", (byte)(MOD_ALT | MOD_SHIFT));
+        MODIFIERS.put("COMMAND-CTRL", (byte)(MOD_GUI | MOD_CTRL));
+        MODIFIERS.put("COMMAND-CTRL-SHIFT", (byte)(MOD_GUI | MOD_CTRL | MOD_SHIFT));
+        MODIFIERS.put("COMMAND-OPTION", (byte)(MOD_GUI | MOD_ALT)); // Option is Alt
+        MODIFIERS.put("COMMAND-OPTION-SHIFT", (byte)(MOD_GUI | MOD_ALT | MOD_SHIFT));
+    }
+
+    private static void mapSymbol(char symbol, char baseChar, byte mod) {
+        if (ASCII_MAP.containsKey(baseChar)) {
+            ASCII_MAP.put(symbol, new HidCode(ASCII_MAP.get(baseChar).key, mod));
+        }
+    }
+
     public static class ParseResult {
         public String shellScript;
         public List<String> errors;
@@ -49,11 +158,13 @@ public class DuckyParser {
         List<String> errors = new ArrayList<>();
         Map<String, CustomDef> customDefs = new HashMap<>();
 
+        shellScript.append("#!/bin/sh\n");
         shellScript.append("HID_DEV=/dev/hidg0\n");
+        shellScript.append("exec 3> $HID_DEV\n"); // Open FD 3
         shellScript.append("write_report() {\n");
-        shellScript.append("  echo -ne \"$1\" > $HID_DEV\n");
+        shellScript.append("  echo -ne \"$1\" >&3\n");
         shellScript.append("  sleep 0.02\n");
-        shellScript.append("  echo -ne \"\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\" > $HID_DEV\n");
+        shellScript.append("  echo -ne \"\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\" >&3\n");
         shellScript.append("}\n\n");
 
         String[] lines = duckyScript.split("\n");
@@ -64,9 +175,12 @@ public class DuckyParser {
             line = line.trim();
             if (line.isEmpty() || line.startsWith("REM")) continue;
 
+            // Split line into command and arguments
+            // Limit split to 2 initially to separate first word
             String[] parts = line.split("\\s+", 2);
             String cmd = parts[0].toUpperCase();
 
+            // 1. DELAY
             if (cmd.equals("DELAY")) {
                 if (parts.length < 2) {
                     errors.add("Line " + lineNum + ": DELAY missing duration");
@@ -74,85 +188,109 @@ public class DuckyParser {
                 }
                 try {
                     int delay = Integer.parseInt(parts[1].trim());
-                    double sleepTime = Math.max(delay / 1000.0, 0.05); 
+                    double sleepTime = Math.max(delay / 1000.0, 0.02); 
                     shellScript.append("sleep ").append(sleepTime).append("\n");
                 } catch (NumberFormatException e) {
                     errors.add("Line " + lineNum + ": Invalid DELAY number");
                 }
-                
-            } else if (cmd.equals("STRING")) {
+                continue;
+            }
+
+            // 2. STRING
+            if (cmd.equals("STRING")) {
                 if (parts.length < 2) {
                     errors.add("Line " + lineNum + ": STRING missing text");
                     continue;
                 }
                 String text = line.substring(7); // Preserve spaces after STRING
                 for (char c : text.toCharArray()) {
-                    boolean shift = Character.isUpperCase(c);
-                    Byte code = CHAR_MAP.get(Character.toLowerCase(c));
-                    if (code == null && c == ' ') code = (byte)0x2C;
-
-                    if (code != null) {
-                        String mod = shift ? "\\x02" : "\\x00";
-                        String hexCode = String.format("\\x%02x", code);
-                        shellScript.append("write_report \"").append(mod).append("\\x00").append(hexCode).append("\\x00\\x00\\x00\\x00\"\\n");
+                    HidCode mapping = ASCII_MAP.get(c);
+                    if (mapping != null) {
+                        appendReport(shellScript, mapping.mod, mapping.key);
                     } else {
-                        // Warn but don't fail for unknown chars yet, just skip
+                        // Unknown char, maybe warn?
                     }
                 }
-                
-            } else if (cmd.equals("ENTER")) {
-                 shellScript.append("write_report \"\\x00\\x00\\x28\\x00\\x00\\x00\\x00\\x00\"\\n");
-                 
-            } else if (cmd.equals("GUI") || cmd.equals("WINDOWS")) {
-                 if (parts.length > 1) {
-                     // Handle GUI r, GUI d, etc.
-                     String key = parts[1].trim().toLowerCase();
-                     if (key.length() == 1 && CHAR_MAP.containsKey(key.charAt(0))) {
-                         Byte code = CHAR_MAP.get(key.charAt(0));
-                         String hexCode = String.format("\\x%02x", code);
-                         shellScript.append("write_report \"\\x08\\x00").append(hexCode).append("\\x00\\x00\\x00\\x00\"\\n");
-                     } else {
-                         errors.add("Line " + lineNum + ": Invalid GUI key");
-                     }
-                 } else {
-                     shellScript.append("write_report \"\\x08\\x00\\x00\\x00\\x00\\x00\\x00\\x00\"\\n");
-                 }
-                 
-            } else if (cmd.equals("DEFINE")) {
-                // Syntax: DEFINE [NAME] [MOD] [KEY]  (e.g. DEFINE F13 00 68)
+                continue;
+            }
+
+            // 3. DEFINE
+            if (cmd.equals("DEFINE")) {
                 String[] defParts = line.split("\\s+");
                 if (defParts.length != 4) {
                     errors.add("Line " + lineNum + ": Usage: DEFINE [NAME] [MOD_HEX] [KEY_HEX]");
                     continue;
                 }
                 String name = defParts[1].toUpperCase();
-                String mod = defParts[2];
-                String key = defParts[3];
-                
-                if (!isHex(mod) || !isHex(key)) {
-                    errors.add("Line " + lineNum + ": Invalid HEX format (use 00 or 0x00)");
-                    continue;
-                }
-                // Clean hex for script
-                mod = "\\x" + mod.replace("0x", "");
-                key = "\\x" + key.replace("0x", "");
-                customDefs.put(name, new CustomDef(mod, key));
-                
-            } else {
-                // Check Custom Defs
-                if (customDefs.containsKey(cmd)) {
-                    CustomDef def = customDefs.get(cmd);
-                    shellScript.append("write_report \"" + def.mod + "\\x00" + def.key + "\\x00\\x00\\x00\\x00\"\\n");
-                } else {
-                    errors.add("Line " + lineNum + ": Unknown command '" + cmd + "'" );
-                }
+                String mod = defParts[2].replace("0x", "");
+                String key = defParts[3].replace("0x", "");
+                customDefs.put(name, new CustomDef("\\x" + mod, "\\x" + key));
+                continue;
             }
+
+            // 4. CUSTOM DEF
+            if (customDefs.containsKey(cmd)) {
+                CustomDef def = customDefs.get(cmd);
+                shellScript.append("write_report \"" + def.mod + "\\x00" + def.key + "\\x00\\x00\\x00\\x00\"\\n");
+                continue;
+            }
+
+            // 5. MODIFIERS (CMD [Key])
+            if (MODIFIERS.containsKey(cmd)) {
+                byte mod = MODIFIERS.get(cmd);
+                if (parts.length > 1) {
+                    String arg = parts[1].trim();
+                    // Resolve argument (could be a Key Command "F1" or a single char "r")
+                    Byte key = null;
+                    
+                    // Check if arg is a known command key (e.g. GUI DELETE)
+                    if (KEY_COMMANDS.containsKey(arg.toUpperCase())) {
+                        key = KEY_COMMANDS.get(arg.toUpperCase());
+                    } 
+                    // Check if arg is single char (e.g. GUI r)
+                    else if (arg.length() == 1) {
+                        HidCode mapping = ASCII_MAP.get(arg.charAt(0));
+                        if (mapping != null) {
+                            key = mapping.key;
+                            // Note: We ignore mapping.mod (Shift) if user did explicit modifier?
+                            // Ducky behavior: CTRL A -> Ctrl + A (which is Shift+a) -> Ctrl+Shift+a.
+                            // We should probably OR them.
+                            mod |= mapping.mod;
+                        }
+                    }
+                    
+                    if (key != null) {
+                        appendReport(shellScript, mod, key);
+                    } else {
+                        errors.add("Line " + lineNum + ": Unknown key '" + arg + "'");
+                    }
+                } else {
+                    // Modifier alone (press and release modifier?)
+                    // Ducky usually implies just tapping the modifier if no arg.
+                    // We send Mod + No Key.
+                    appendReport(shellScript, mod, (byte)0x00);
+                }
+                continue;
+            }
+
+            // 6. KEY COMMANDS (ENTER, F1, etc.)
+            if (KEY_COMMANDS.containsKey(cmd)) {
+                byte key = KEY_COMMANDS.get(cmd);
+                appendReport(shellScript, (byte)0x00, key);
+                continue;
+            }
+
+            errors.add("Line " + lineNum + ": Unknown command '" + cmd + "'");
         }
         
+        shellScript.append("exec 3>&-\n"); // Close FD 3
         return new ParseResult(shellScript.toString(), errors);
     }
     
-    private static boolean isHex(String s) {
-        return s.matches("0x[0-9A-Fa-f]{2}") || s.matches("[0-9A-Fa-f]{2}");
+    private static void appendReport(StringBuilder sb, byte mod, byte key) {
+        String hexMod = String.format("\\x%02x", mod);
+        String hexKey = String.format("\\x%02x", key);
+        // 7-byte report: Mod, Res, Key, 0, 0, 0, 0
+        sb.append("write_report \"" + hexMod + "\\x00" + hexKey + "\\x00\\x00\\x00\\x00\"\n");
     }
 }

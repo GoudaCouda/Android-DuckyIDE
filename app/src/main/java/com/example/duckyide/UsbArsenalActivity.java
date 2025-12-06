@@ -39,6 +39,9 @@ public class UsbArsenalActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_usb_arsenal);
         
+        Logger.init(this);
+        Logger.log("UsbArsenalActivity Opened");
+        
         // Request Storage Permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
@@ -95,7 +98,7 @@ public class UsbArsenalActivity extends AppCompatActivity {
         tvMountedFile = findViewById(R.id.tv_mounted_file);
         tvImagesPath = findViewById(R.id.tv_images_path);
         statusLog = findViewById(R.id.status_log_arsenal);
-        statusLog.setMovementMethod(new ScrollingMovementMethod());
+        // statusLog.setMovementMethod(new ScrollingMovementMethod()); // Removed to let ScrollView handle it
         chkRo = findViewById(R.id.chk_ro);
         chkCdrom = findViewById(R.id.chk_cdrom);
         
@@ -129,6 +132,7 @@ public class UsbArsenalActivity extends AppCompatActivity {
             String finalMode = mode; // for lambda
             new Thread(() -> {
                 String result = UsbController.setUsbFunctions(finalMode, vid, pid);
+                Logger.log("SetFunctions Result:\n" + result);
                 runOnUiThread(() -> {
                      if (result != null && result.startsWith("SUCCESS")) {
                         statusLog.setText("> Config applied successfully.\n" + result);
@@ -158,6 +162,7 @@ public class UsbArsenalActivity extends AppCompatActivity {
             statusLog.setText("> Mounting " + filename + "...");
             new Thread(() -> {
                 String result = UsbController.mountImage(path, ro, cdrom);
+                Logger.log("Mount Result: " + (result.isEmpty() ? "Success" : result));
                 runOnUiThread(() -> {
                     if (result != null && !result.isEmpty()) {
                         statusLog.append("\n> Error: " + result);
@@ -173,6 +178,7 @@ public class UsbArsenalActivity extends AppCompatActivity {
             statusLog.setText("> Unmounting...");
              new Thread(() -> {
                 UsbController.unmountImage();
+                Logger.log("Unmounted image");
                 runOnUiThread(() -> {
                     statusLog.append("\n> Unmount command sent.");
                     refreshStatus();

@@ -1,27 +1,37 @@
 package com.example.duckyide;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 
 public class MainActivity extends AppCompatActivity {
 
     private EditText editor;
     private TextView statusLog;
+    private ActivityResultLauncher<String> filePickerLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        
+        Logger.init(this);
+        Logger.log("DuckyIDE Started");
 
         editor = findViewById(R.id.editor);
         statusLog = findViewById(R.id.status_log);
@@ -29,6 +39,16 @@ public class MainActivity extends AppCompatActivity {
         Button btnSave = findViewById(R.id.btn_save);
         Button btnLoad = findViewById(R.id.btn_load);
         Button btnArsenal = findViewById(R.id.btn_usb_arsenal);
+
+        // Initialize File Picker
+        filePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri != null) {
+                    loadFromUri(uri);
+                }
+            }
+        );
 
         checkRoot();
 
@@ -43,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private void checkRoot() {
         new Thread(() -> {
             boolean root = RootShell.isRootAvailable();
+            Logger.log("Root Check: " + root);
             runOnUiThread(() -> {
                 if (root) {
                     statusLog.setText("> Root access: GRANTED.\n> Ready to inject.");
@@ -67,15 +88,25 @@ public class MainActivity extends AppCompatActivity {
                 sb.append("  - ").append(err).append("\n");
             }
             statusLog.setText(sb.toString());
+            Logger.log("Compilation Failed: " + result.errors.toString());
             return;
         }
         
         statusLog.append("\n> Injecting...");
+        Logger.log("Starting Injection...");
         new Thread(() -> {
             try {
-                RootShell.executeScript(result.shellScript);
+                // Write script to temp file for reliable execution
+                File payloadFile = new File(getCacheDir(), "payload.sh");
+                try (FileWriter writer = new FileWriter(payloadFile)) {
+                    writer.write(result.shellScript);
+                }
+                
+                RootShell.runScriptFile(payloadFile.getAbsolutePath());
+                Logger.log("Injection Complete");
                 runOnUiThread(() -> statusLog.append("\n> Injection Complete."));
             } catch (IOException e) {
+                Logger.log("Injection Error: " + e.getMessage());
                 runOnUiThread(() -> statusLog.append("\n> Error: " + e.getMessage()));
             }
         }).start();
@@ -88,24 +119,34 @@ public class MainActivity extends AppCompatActivity {
             writer.write(editor.getText().toString());
             Toast.makeText(this, "Saved to " + file.getAbsolutePath(), Toast.LENGTH_SHORT).show();
             statusLog.setText("> Saved: " + file.getName());
+            Logger.log("Saved script to " + file.getAbsolutePath());
         } catch (IOException e) {
              Toast.makeText(this, "Save Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+             Logger.log("Save Failed: " + e.getMessage());
         }
     }
 
     private void loadScript() {
-         File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-         File file = new File(path, "payload.txt");
-         if (!file.exists()) {
-             Toast.makeText(this, "No payload.txt in Downloads", Toast.LENGTH_SHORT).show();
-             return;
-         }
-         try {
-             String content = new String(Files.readAllBytes(file.toPath()));
-             editor.setText(content);
-             statusLog.setText("> Loaded: " + file.getName());
-         } catch (IOException e) {
-             Toast.makeText(this, "Load Failed", Toast.LENGTH_SHORT).show();
-         }
+        // Launch system file picker for text/plain or any file
+        filePickerLauncher.launch("text/*");
+    }
+
+    private void loadFromUri(Uri uri) {
+        try {
+            StringBuilder stringBuilder = new StringBuilder();
+            try (InputStream inputStream = getContentResolver().openInputStream(uri);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    stringBuilder.append(line).append("\n");
+                }
+            }
+            editor.setText(stringBuilder.toString());
+            statusLog.setText("> Loaded file from storage.");
+            Logger.log("Loaded script from URI: " + uri.toString());
+        } catch (IOException e) {
+            Toast.makeText(this, "Error loading file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Logger.log("Load Error: " + e.getMessage());
+        }
     }
 }

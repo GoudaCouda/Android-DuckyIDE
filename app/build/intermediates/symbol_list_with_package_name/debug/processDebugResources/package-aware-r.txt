@@ -3236,7 +3236,10 @@ id end
 id endToStart
 id enterAlways
 id enterAlwaysCollapsed
+id et_manuf
 id et_pid
+id et_product
+id et_serial
 id et_vid
 id exitUntilCollapsed
 id expand_activities_button

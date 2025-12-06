@@ -36,6 +36,8 @@
 *   Tap **RUN** to inject immediately.
 
 ### 2. USB Arsenal
+> **⚠️ WORK IN PROGRESS:** The USB Arsenal feature is currently experimental and varies heavily by kernel. If you experience stability issues or if gadgets fail to enumerate, we highly recommend setting up your ConfigFS environment using the standard **Kali Nethunter** app or boot scripts first, then using DuckyIDE purely for script injection.
+
 *   Navigate to the "USB Arsenal" tab.
 *   Select your desired USB interfaces (e.g., "ADB + Mass Storage + HID").
 *   Tap **APPLY CONFIG**.

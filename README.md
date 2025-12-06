@@ -18,7 +18,7 @@
 *   **Compatibility:**
     *   Implements **Dynamic Function Enumeration** (`f1`, `f2`...) to support strict kernels (Samsung OneUI, Pixel Stock).
     *   VID/PID spoofing.
-
+* Check Out the scripting guide for the supported functions. [DUCKY_SCRIPT_GUIDE.md](DUCKY_SCRIPT_GUIDE.md)
 ## Requirements
 
 *   **Root Access:** Essential for modifying USB gadget configurations and writing to `/dev/hidg0`.

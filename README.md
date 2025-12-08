@@ -1,3 +1,5 @@
+90% vibecoded with gemini to create a decent looking and functioning IDE for creating and Injecting Ducky Scripts. 
+
 # DuckyIDE for Android
 
 **DuckyIDE** is a native Android application that turns a rooted device into a powerful USB attack platform. It allows you to write, compile, and inject Ducky Script payloads over USB HID, as well as manage complex USB gadget compositions (Mass Storage, RNDIS, ADB).
@@ -21,7 +23,7 @@
 *   **Compatibility:**
     *   Implements **Dynamic Function Enumeration** (`f1`, `f2`...) to support strict kernels (Samsung OneUI, Pixel Stock).
     *   VID/PID spoofing.
-
+* Check Out the scripting guide for the supported functions. [DUCKY_SCRIPT_GUIDE.md](DUCKY_SCRIPT_GUIDE.md)
 ## Requirements
 
 *   **Root Access:** Essential for modifying USB gadget configurations and writing to `/dev/hidg0`.

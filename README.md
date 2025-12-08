@@ -5,6 +5,11 @@
 ## Features
 
 *   **Ducky Script Editor:** Syntax highlighting and fast compilation.
+*   **LED Status Monitor:** Real-time UI indicators for Caps Lock, Num Lock, and Scroll Lock status, reading directly from the HID interface.
+*   **Enhanced Logging:**
+    *   Timestamped logs for precise debugging.
+    *   Scrollable log view with history.
+    *   Verbose status updates for HID connection and LED monitoring.
 *   **USB Arsenal:**
     *   **Composite Devices:** Run ADB, Mass Storage, and HID simultaneously.
     *   **Total Control:** Bypasses Android's USB limitations by manually orchestrating the ConfigFS gadget.

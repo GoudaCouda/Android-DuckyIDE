@@ -55,11 +55,12 @@ You can combine modifiers with keys or other commands.
 
 ### Usage
 ```ducky
-GUI r           REM Press Windows+R
-CTRL c          REM Press Ctrl+C
-ALT F4          REM Press Alt+F4
-SHIFT a         REM Types 'A' (Same as STRING A)
-CTRL-ALT DELETE REM Combo
+GUI r             REM Press Windows+R
+CTRL c            REM Press Ctrl+C
+ALT F4            REM Press Alt+F4
+SHIFT a           REM Types 'A' (Same as STRING A)
+CTRL-ALT DELETE   REM Standard Combo
+ALT PRINTSCREEN r REM Multi-key: Alt + PrintScreen + r
 ```
 
 ### Supported Combinations

@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.text.method.ScrollingMovementMethod;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -18,12 +19,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
     private EditText editor;
     private TextView statusLog;
+    private TextView ledNum, ledCaps, ledScroll;
     private ActivityResultLauncher<String> filePickerLauncher;
+    private LedMonitor ledMonitor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,10 +44,27 @@ public class MainActivity extends AppCompatActivity {
 
         editor = findViewById(R.id.editor);
         statusLog = findViewById(R.id.status_log);
+        statusLog.setMovementMethod(new ScrollingMovementMethod());
+        
+        ledNum = findViewById(R.id.led_num);
+        ledCaps = findViewById(R.id.led_caps);
+        ledScroll = findViewById(R.id.led_scroll);
+
         Button btnRun = findViewById(R.id.btn_run);
         Button btnSave = findViewById(R.id.btn_save);
         Button btnLoad = findViewById(R.id.btn_load);
         Button btnArsenal = findViewById(R.id.btn_usb_arsenal);
+
+        ledMonitor = new LedMonitor();
+        ledMonitor.setListener((num, caps, scroll) -> runOnUiThread(() -> {
+            int onColor = 0xFF00FF00; // Green
+            int offColor = 0xFF555555; // Grey
+            
+            ledNum.setTextColor(num ? onColor : offColor);
+            ledCaps.setTextColor(caps ? onColor : offColor);
+            ledScroll.setTextColor(scroll ? onColor : offColor);
+        }));
+        ledMonitor.setLogListener(this::appendLog);
 
         // Initialize File Picker
         filePickerLauncher = registerForActivityResult(
@@ -54,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
         );
 
         checkRoot();
+        ledMonitor.start();
 
         btnRun.setOnClickListener(v -> runScript());
         btnSave.setOnClickListener(v -> saveScript());
@@ -63,17 +87,38 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (ledMonitor != null) {
+            ledMonitor.stop();
+        }
+    }
+
+    private void appendLog(String message) {
+        runOnUiThread(() -> {
+            String timestamp = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+            statusLog.append("\n[" + timestamp + "] " + message);
+            
+            // Auto-scroll to bottom
+            if (statusLog.getLayout() != null) {
+                final int scrollAmount = statusLog.getLayout().getLineTop(statusLog.getLineCount()) - statusLog.getHeight();
+                if (scrollAmount > 0) {
+                    statusLog.scrollTo(0, scrollAmount);
+                }
+            }
+        });
+    }
+
     private void checkRoot() {
         new Thread(() -> {
             boolean root = RootShell.isRootAvailable();
             Logger.log("Root Check: " + root);
-            runOnUiThread(() -> {
-                if (root) {
-                    statusLog.setText("> Root access: GRANTED.\n> Ready to inject.");
-                } else {
-                    statusLog.setText("> Root access: DENIED.\n> App requires root for injection.");
-                }
-            });
+            if (root) {
+                appendLog("Root access: GRANTED.\n> Ready to inject.");
+            } else {
+                appendLog("Root access: DENIED.\n> App requires root for injection.");
+            }
         }).start();
     }
 
@@ -81,21 +126,21 @@ public class MainActivity extends AppCompatActivity {
         String code = editor.getText().toString();
         if (code.isEmpty()) return;
 
-        statusLog.setText("> Compiling...");
+        appendLog("Compiling...");
         
         DuckyParser.ParseResult result = DuckyParser.parseToShell(code);
         
         if (!result.errors.isEmpty()) {
-            StringBuilder sb = new StringBuilder("> Compilation Errors:\n");
+            StringBuilder sb = new StringBuilder("Compilation Errors:\n");
             for (String err : result.errors) {
                 sb.append("  - ").append(err).append("\n");
             }
-            statusLog.setText(sb.toString());
+            appendLog(sb.toString());
             Logger.log("Compilation Failed: " + result.errors.toString());
             return;
         }
         
-        statusLog.append("\n> Injecting...");
+        appendLog("Injecting...");
         Logger.log("Starting Injection...");
         new Thread(() -> {
             try {
@@ -107,10 +152,10 @@ public class MainActivity extends AppCompatActivity {
                 
                 RootShell.runScriptFile(payloadFile.getAbsolutePath());
                 Logger.log("Injection Complete");
-                runOnUiThread(() -> statusLog.append("\n> Injection Complete."));
+                appendLog("Injection Complete.");
             } catch (IOException e) {
                 Logger.log("Injection Error: " + e.getMessage());
-                runOnUiThread(() -> statusLog.append("\n> Error: " + e.getMessage()));
+                appendLog("Error: " + e.getMessage());
             }
         }).start();
     }
@@ -121,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
         try (FileWriter writer = new FileWriter(file)) {
             writer.write(editor.getText().toString());
             Toast.makeText(this, "Saved to " + file.getAbsolutePath(), Toast.LENGTH_SHORT).show();
-            statusLog.setText("> Saved: " + file.getName());
+            appendLog("Saved: " + file.getName());
             Logger.log("Saved script to " + file.getAbsolutePath());
         } catch (IOException e) {
              Toast.makeText(this, "Save Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -145,7 +190,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             editor.setText(stringBuilder.toString());
-            statusLog.setText("> Loaded file from storage.");
+            appendLog("Loaded file from storage.");
             Logger.log("Loaded script from URI: " + uri.toString());
         } catch (IOException e) {
             Toast.makeText(this, "Error loading file: " + e.getMessage(), Toast.LENGTH_SHORT).show();

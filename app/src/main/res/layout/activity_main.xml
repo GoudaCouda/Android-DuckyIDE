@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/terminal_bg"
-    android:padding="8dp">
+    android:padding="4dp">
 
     <TextView
         android:layout_width="match_parent"
@@ -16,91 +17,140 @@
         android:fontFamily="monospace"
         android:paddingBottom="8dp"/>
 
-    <EditText
-        android:id="@+id/editor"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="@drawable/bg_editor"
-        android:gravity="top|start"
-        android:padding="8dp"
-        android:hint="@string/hint_editor"
-        android:textColor="@color/terminal_green"
-        android:textColorHint="#5500FF00"
-        android:textSize="14sp"
-        android:fontFamily="monospace"
-        android:inputType="textMultiLine|textNoSuggestions"
-        android:scrollbars="vertical" />
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="8dp">
-
-        <Button
-            android:id="@+id/btn_load"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/action_load"
-            android:backgroundTint="@color/dark_grey"
-            android:textColor="@color/terminal_green"
-             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:fontFamily="monospace"/>
+            android:orientation="vertical">
 
-        <Space
-            android:layout_width="8dp"
-            android:layout_height="wrap_content"/>
+            <EditText
+                android:id="@+id/editor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minLines="4"             android:maxLines="100"           android:background="@drawable/bg_editor"
+                android:gravity="top|start"
+                android:padding="8dp"
+                android:hint="@string/hint_editor"
+                android:textColor="@color/terminal_green"
+                android:textColorHint="#5500FF00"
+                android:textSize="14sp"
+                android:fontFamily="monospace"
+                android:inputType="textMultiLine|textNoSuggestions"
+                android:scrollbars="vertical" />
 
-        <Button
-            android:id="@+id/btn_save"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/action_save"
-            android:backgroundTint="@color/dark_grey"
-            android:textColor="@color/terminal_green"
-             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:fontFamily="monospace"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
 
-        <Space
-            android:layout_width="8dp"
-            android:layout_height="wrap_content"/>
+                <Button
+                    android:id="@+id/btn_load"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/action_load"
+                    android:backgroundTint="@color/dark_grey"
+                    android:textColor="@color/terminal_green"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:fontFamily="monospace"/>
 
-        <Button
-            android:id="@+id/btn_run"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/action_run"
-            android:backgroundTint="@color/terminal_green"
-            android:textColor="@color/black"
-            android:textStyle="bold"
-            android:fontFamily="monospace"/>
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="wrap_content"/>
 
-    </LinearLayout>
+                <Button
+                    android:id="@+id/btn_save"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/action_save"
+                    android:backgroundTint="@color/dark_grey"
+                    android:textColor="@color/terminal_green"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:fontFamily="monospace"/>
 
-    <Button
-        android:id="@+id/btn_usb_arsenal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="OPEN USB ARSENAL"
-        android:backgroundTint="@color/dark_grey"
-        android:textColor="@color/terminal_green"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:fontFamily="monospace"
-        android:layout_marginTop="8dp"/>
-    
-    <TextView
-        android:id="@+id/status_log"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxLines="3"
-        android:textColor="#AAAAAA"
-        android:textSize="10sp"
-        android:fontFamily="monospace"
-        android:text="> System ready."
-        android:paddingTop="4dp"/>
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="wrap_content"/>
 
+                <Button
+                    android:id="@+id/btn_run"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/action_run"
+                    android:backgroundTint="@color/terminal_green"
+                    android:textColor="@color/black"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"/>
+
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btn_usb_arsenal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="OPEN USB ARSENAL"
+                android:backgroundTint="@color/dark_grey"
+                android:textColor="@color/terminal_green"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:fontFamily="monospace"
+                android:layout_marginTop="8dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:padding="8dp">
+
+                <TextView
+                    android:id="@+id/led_num"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="NUM"
+                    android:textColor="#555555"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:paddingEnd="16dp"/>
+
+                <TextView
+                    android:id="@+id/led_caps"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CAPS"
+                    android:textColor="#555555"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:paddingEnd="16dp"/>
+
+                <TextView
+                    android:id="@+id/led_scroll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SCROLL"
+                    android:textColor="#555555"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/status_log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="12"
+                android:scrollbars="vertical"
+                android:textColor="#AAAAAA"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:text="> System ready."
+                android:paddingTop="4dp"/>
+
+        </LinearLayout>
+    </ScrollView>
 </LinearLayout>

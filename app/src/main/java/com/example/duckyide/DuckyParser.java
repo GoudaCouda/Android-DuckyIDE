@@ -238,32 +238,45 @@ public class DuckyParser {
                 continue;
             }
 
-            // 5. MODIFIERS (CMD [Key])
+            // 5. MODIFIERS (CMD [Key] [Key]...)
             if (MODIFIERS.containsKey(cmd)) {
                 byte mod = MODIFIERS.get(cmd);
+                List<Byte> keys = new ArrayList<>();
+                
                 if (parts.length > 1) {
-                    String arg = parts[1].trim();
-                    Byte key = null;
-                    
-                    if (KEY_COMMANDS.containsKey(arg.toUpperCase())) {
-                        key = KEY_COMMANDS.get(arg.toUpperCase());
-                    } 
-                    else if (arg.length() == 1) {
-                        HidCode mapping = ASCII_MAP.get(arg.charAt(0));
-                        if (mapping != null) {
-                            key = mapping.key;
-                            mod |= mapping.mod; // Combine mods
+                    String[] args = parts[1].trim().split("\\s+");
+                    for (String arg : args) {
+                        // Check if arg is a modifier (e.g. "CTRL ALT DEL")
+                        if (MODIFIERS.containsKey(arg.toUpperCase())) {
+                            mod |= MODIFIERS.get(arg.toUpperCase());
+                        }
+                        // Check Key Commands
+                        else if (KEY_COMMANDS.containsKey(arg.toUpperCase())) {
+                            keys.add(KEY_COMMANDS.get(arg.toUpperCase()));
+                        } 
+                        // Check Single Char
+                        else if (arg.length() == 1) {
+                            HidCode mapping = ASCII_MAP.get(arg.charAt(0));
+                            if (mapping != null) {
+                                keys.add(mapping.key);
+                                mod |= mapping.mod; // Combine mods
+                            } else {
+                                errors.add("Line " + lineNum + ": Unknown char '" + arg + "'");
+                            }
+                        } else {
+                            errors.add("Line " + lineNum + ": Unknown key '" + arg + "'");
                         }
                     }
                     
-                    if (key != null) {
-                        addPressRelease(currentChunk, mod, key);
-                    } else {
-                        errors.add("Line " + lineNum + ": Unknown key '" + arg + "'");
+                    if (!keys.isEmpty()) {
+                        addPressRelease(currentChunk, mod, keys);
+                    } else if (errors.isEmpty()) {
+                         // Modifiers only (e.g. just "CTRL ALT") - rarely useful as press-release but supported
+                         addPressRelease(currentChunk, mod, new ArrayList<>()); 
                     }
                 } else {
                     // Modifier alone (tap modifier)
-                    addPressRelease(currentChunk, mod, (byte)0x00);
+                    addPressRelease(currentChunk, mod, new ArrayList<>());
                 }
                 continue;
             }
@@ -285,9 +298,23 @@ public class DuckyParser {
     }
     
     private static void addPressRelease(ByteArrayOutputStream os, byte mod, byte key) {
+        List<Byte> keys = new ArrayList<>();
+        keys.add(key);
+        addPressRelease(os, mod, keys);
+    }
+
+    private static void addPressRelease(ByteArrayOutputStream os, byte mod, List<Byte> keys) {
         // PRESS (8 bytes)
-        os.write(mod); os.write(0); os.write(key);
-        os.write(0); os.write(0); os.write(0); os.write(0); os.write(0);
+        os.write(mod); 
+        os.write(0); // Reserved
+        
+        for (int i = 0; i < 6; i++) {
+            if (i < keys.size()) {
+                os.write(keys.get(i));
+            } else {
+                os.write(0);
+            }
+        }
 
         // RELEASE (8 bytes)
         os.write(0); os.write(0); os.write(0);

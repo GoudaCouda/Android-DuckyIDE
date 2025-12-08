@@ -45,6 +45,8 @@ public class LedMonitor {
         executor.execute(() -> {
             log("LedMonitor: Service started.");
             
+            boolean deviceNotFoundWarned = false;
+            
             while (isRunning) {
                 try {
                     // 1. Check for file existence using su
@@ -59,13 +61,23 @@ public class LedMonitor {
                     }
 
                     if (!deviceExists) {
+                        if (!deviceNotFoundWarned) {
+                            log("LedMonitor: HID device not found. Retrying in background...");
+                            deviceNotFoundWarned = true;
+                        }
                         try {
-                            Thread.sleep(2000); 
+                            Thread.sleep(8000); 
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             break;
                         }
                         continue;
+                    }
+                    
+                    // Device found, reset warning flag
+                    if (deviceNotFoundWarned) {
+                        log("LedMonitor: Device found.");
+                        deviceNotFoundWarned = false;
                     }
 
                     log("LedMonitor: /dev/hidg0 found. Setting permissions...");
@@ -128,7 +140,7 @@ public class LedMonitor {
                     if (isRunning) {
                         log("LedMonitor Error: " + e.getMessage());
                         try {
-                            Thread.sleep(3000);
+                            Thread.sleep(8000);
                         } catch (InterruptedException ie) {
                            Thread.currentThread().interrupt();
                            break;
